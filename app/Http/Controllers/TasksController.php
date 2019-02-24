@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Task;
+use App\User;
 
 class TasksController extends Controller
 {
@@ -14,9 +15,13 @@ class TasksController extends Controller
      */
     public function index()
     {
-        $tasks = Task::all();
-        
-        return view('tasks.index',['tasks' => $tasks,]);
+        if (\Auth::check()) {    
+            $user = \Auth::user();
+            $tasks = Task::where('user_id',$user->id)->get();
+            
+            return view('tasks.index',['tasks' => $tasks,]);
+        }
+        return view('welcome');
     }
 
     /**
@@ -38,15 +43,15 @@ class TasksController extends Controller
      */
     public function store(Request $request)
     {
+        
         $this->validate($request,[
             'content' => 'required|max:191',
             'status' => 'required|max:10',
                 ]);
-        $task = new Task;
-        $task->status = $request->status;
-        $task->content = $request->content;
-        $task->save();
-        
+        $request->user()->tasks()->create([
+            'content' => $request->content,
+            'status' => $request->status,
+        ]);
         return redirect('/');
     }
 
@@ -95,8 +100,9 @@ class TasksController extends Controller
         $task = Task::find($id);
         $task->status = $request->status;
         $task->content = $request->content;
-        $task->save();
-
+        if (\Auth::id() === $task->user_id) {
+            $task->save();
+        }
         return redirect('/');
     }
 
@@ -109,8 +115,9 @@ class TasksController extends Controller
     public function destroy($id)
     {
         $task = Task::find($id);
-        $task->delete();
-
+        if (\Auth::id() === $task->user_id) {
+            $task->delete();
+        }
         return redirect('/');
     }
 }
